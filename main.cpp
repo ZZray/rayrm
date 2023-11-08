@@ -1,14 +1,18 @@
-﻿#include <iostream>
+﻿/**
+ * @author: rayzhang
+ * printf 在输出时通常是原子操作。不过，在多线程环境中，仍然可能需要使用互斥锁来保护共享数据或避免其他类型的竞争条件。
+ * std::filesystem::remove_all 不是线程安全的，如果要删除的路径之间存在依赖关系，这可能会导致问题
+ */
 #include <filesystem>
 #include <vector>
 #include <string>
-#include <algorithm>
+#include <thread>
 
 namespace fs = std::filesystem;
 
 // 用于在控制台打印红色文本的函数
 void printRed(const std::string& message) {
-    std::cout << "\033[31m" << message << "\033[0m" << std::endl;
+    printf("\033[31m%s\033[0m\n", message.c_str());
 }
 
 // 删除给定路径的文件或文件夹
@@ -17,29 +21,27 @@ void deletePath(const fs::path& pathToDelete) {
         if (fs::exists(pathToDelete)) {
             // 递归删除文件或文件夹
             const auto removed_count = fs::remove_all(pathToDelete);
-            std::cout << "Removed " << removed_count << " item(s) from: " << pathToDelete << std::endl;
-        }
-        else {
+            printf("Removed %zu item(s) from: %ls\n", removed_count, pathToDelete.c_str());
+        } else {
             printRed("Error: Path does not exist: " + pathToDelete.string());
         }
-    }
-    catch (fs::filesystem_error& e) {
+    } catch (fs::filesystem_error& e) {
         printRed("Error: " + std::string(e.what()));
     }
 }
 
 int main(int argc, char* argv[]) {
+    std::vector<std::thread> threads;
 
-    // 解析命令行参数
-    std::vector<std::string> paths(argc - 1);
+    // 解析命令行参数并创建线程
     for (int i = 1; i < argc; ++i) {
-        paths.push_back(argv[i]);
+        threads.emplace_back(deletePath, fs::path(argv[i]));
     }
 
-    // 删除指定的路径
-    for (const auto& pathString : paths) {
-        deletePath(fs::path(pathString));
+    // 等待所有线程完成
+    for (auto& th : threads) {
+        th.join();
     }
-
+    printf("all done!");
     return 0;
 }
