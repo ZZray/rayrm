@@ -19,9 +19,15 @@ void printRed(const std::string& message) {
 void deletePath(const fs::path& pathToDelete) {
     try {
         if (fs::exists(pathToDelete)) {
-            // 递归删除文件或文件夹
-            const auto removed_count = fs::remove_all(pathToDelete);
-            printf("Removed %zu item(s) from: %ls\n", removed_count, pathToDelete.c_str());
+            if (fs::is_regular_file(pathToDelete)) {
+                // 删除文件
+                fs::remove(pathToDelete);
+                printf("Removed file: %ls\n", pathToDelete.c_str());
+            } else if (fs::is_directory(pathToDelete)) {
+                // 递归删除目录
+                const auto removed_count = fs::remove_all(pathToDelete);
+                printf("Removed %zu item(s) from directory: %ls\n", removed_count, pathToDelete.c_str());
+            }
         } else {
             printRed("Error: Path does not exist: " + pathToDelete.string());
         }
@@ -42,6 +48,6 @@ int main(int argc, char* argv[]) {
     for (auto& th : threads) {
         th.join();
     }
-    printf("all done!");
+
     return 0;
 }
