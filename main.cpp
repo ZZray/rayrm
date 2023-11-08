@@ -8,6 +8,7 @@
 #include <future>
 #include <format>
 #include <iostream>
+
 namespace fs = std::filesystem;
 
 // 用于在控制台打印红色文本的函数
@@ -80,6 +81,7 @@ void syncWait(std::vector<std::future<RemoveResult>>& threads)
 
 int main(int argc, char* argv[])
 {
+    //ray::utils::addToContextMenu("rayrm", std::format(R"({}/rayrm.exe %1)", fs::current_path().string()));
     if (argc != 2) {
         printRed("Usage: rayrm d:/test d:/test2 d:/test3.txt ...");
         return 1;
@@ -93,6 +95,8 @@ int main(int argc, char* argv[])
         //const auto directoryPath = fs::path(argv[1]);
         //const std::size_t fileCount = countFilesInDirectory(directoryPath);
         //std::cout << "The directory contains " << fileCount << " file(s)." << std::endl;
+
+        // 如果当前目录里面还是只有一个目录，则继续寻找，直到找到一个目录下面有多个目录?
 
         // 如果是目录，为每个子路径创建线程
         //for (const auto& entry : fs::recursive_directory_iterator(argv[1])) {

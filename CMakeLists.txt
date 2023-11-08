@@ -3,7 +3,7 @@ project(rayrm VERSION 0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} WIN32 main.cpp assets/app.rc)
 
 # 当使用MSVC编译器时，设置/ENTRY:mainCRTStartup链接选项
 if(MSVC)
