@@ -22,6 +22,9 @@ IF NOT EXIST "%WinDir%\System32\CHOICE.exe" ECHO.&ECHO 输入无效 &PAUSE&CLS&GOTO 
 reg add "HKCR\*\shell\rayrm" /f /v "" /d "快速删除" >NUL 2>NUL
 reg add "HKCR\*\shell\rayrm" /f /v "Icon" /d "%~dp0rayrm.exe" >NUL 2>NUL
 reg add "HKCR\*\shell\rayrm\command" /f /v "" /d "%~dp0rayrm.exe \"%%1\"" >NUL 2>NUL
+reg add "HKCR\Directory\shell\rayrm" /f /v "" /d "快速删除" >NUL 2>NUL
+reg add "HKCR\Directory\shell\rayrm" /f /v "Icon" /d "%~dp0rayrm.exe" >NUL 2>NUL
+reg add "HKCR\Directory\shell\rayrm\command" /f /v "" /d "%~dp0rayrm.exe \"%%1\"" >NUL 2>NUL
 IF EXIST "%WinDir%\System32\CHOICE.exe" ( 
 ECHO.&ECHO 已添加 &TIMEOUT /t 2 >NUL & CLS & GOTO MENU
 ) ELSE ( 
@@ -30,6 +33,8 @@ ECHO.&ECHO 已添加，任意键返回 &PAUSE>NUL&CLS&GOTO MENU)
 :RemoveMenu
 reg delete "HKCR\*\shell\rayrm" /f >NUL 2>NUL
 reg delete "HKLM\*\shell\rayrm" /f >NUL 2>NUL
+reg delete "HKCR\Directory\shell\rayrm" /f >NUL 2>NUL
+reg delete "HKLM\Directory\shell\rayrm" /f >NUL 2>NUL
 IF EXIST "%WinDir%\System32\CHOICE.exe" ( 
 ECHO.&ECHO 已删除 &TIMEOUT /t 2 >NUL & CLS & GOTO MENU
 ) ELSE ( 
