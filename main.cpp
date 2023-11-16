@@ -8,6 +8,7 @@
 #include <future>
 #include <format>
 #include <iostream>
+#include <queue>
 
 namespace fs = std::filesystem;
 
@@ -42,7 +43,67 @@ void printResult(const RemoveResult& res)
     }
 
 }
+class ThreadPool {
+public:
+    ThreadPool() {
+        for (int i = 0; i < static_cast<int>(std::thread::hardware_concurrency()) * 5; ++i) {
+            _threads.emplace_back([this] {
+                while (!_stop) {
+                    std::unique_lock lock(_mtx);
+                    _condVar.wait(lock, [this] { return !_tasks.empty() || _stop; });
 
+                    if (_stop) {
+                        return;
+                    }
+                    auto task = std::move(_tasks.front());
+                    _tasks.pop();
+                    lock.unlock();
+                    task();
+                }
+            });
+        }
+    }
+    ~ThreadPool()
+    {
+        stop();
+    }
+    template<typename F, typename... Args>
+    void run(F&& f, Args&&... args) {
+        auto task = [Func = std::forward<F>(f)] { return Func(); };
+
+        {
+            std::lock_guard lock(_mtx);
+            _tasks.emplace(task);
+        }
+
+        _condVar.notify_one();
+    }
+    void wait()
+    {
+        for (auto& t : _threads) {
+            if (t.joinable()) {
+                t.join();
+            }
+        }
+    }
+    void stop()
+    {
+        if (_stop) {
+            return;
+        }
+        _stop = true;
+        _condVar.notify_all();
+        wait();
+        _threads.clear();
+    }
+
+private:
+    std::queue<std::function<void()>> _tasks;
+    std::atomic_bool _stop{ false };
+    std::mutex _mtx;
+    std::condition_variable _condVar;
+    std::vector<std::thread> _threads;
+};
 // 删除给定路径的文件或文件夹
 RemoveResult removeData(const fs::path& dataToRemove)
 {
@@ -59,8 +120,32 @@ RemoveResult removeData(const fs::path& dataToRemove)
             }
             else if (fs::is_directory(dataToRemove)) {
                 // todo: 优化性能
-                const auto removed_count = fs::remove_all(dataToRemove);
-                message = std::format("Removed {} item(s) from directory: {}", removed_count, dataToRemove.string());
+                ThreadPool pool;
+                //const auto removedCount = fs::remove_all(dataToRemove);
+                for (const auto& p : fs::recursive_directory_iterator(dataToRemove)) {
+                    pool.run([p] {
+                        const fs::path& filePath = p.path();
+                        if (fs::is_regular_file(filePath) || fs::is_symlink(filePath)) {
+                            // 删除文件
+                            try {
+                                fs::remove(filePath);
+                            }
+                            catch (...) {
+                                std::cerr << "Failed to remove " << filePath << '\n';
+                            }
+                        }
+                    });
+
+                }
+                pool.stop();
+                // 删除主目录
+                try {
+                    std::filesystem::remove_all(dataToRemove);
+                    message = std::format("Removed directory: {}", dataToRemove.string());
+                }
+                catch (...) {
+                    message = std::format("Error: Failed to remove {}", dataToRemove.string());
+                }
             }
         }
         else {
@@ -91,21 +176,8 @@ int main(int argc, char* argv[])
     }
     // 开始计时
     const auto start = std::chrono::high_resolution_clock::now();
-    // 如果输入的只有一个路径
-    if (argc == 2 && fs::is_directory(argv[1])) {
-        printResult(removeData(argv[1]));
-    }
-    else {
-        std::vector<std::future<RemoveResult>> threads;
-        // 解析命令行参数并创建线程
-        for (int i = 1; i < argc; ++i) {
-            threads.emplace_back(std::async(std::launch::async | std::launch::deferred, removeData, fs::path(argv[i])));
-            if (threads.size() > std::thread::hardware_concurrency()) {
-                syncWait(threads);
-            }
-        }
-        // 等待所有线程完成
-        syncWait(threads);
+    for (int i = 1; i < argc; ++i) {
+        printResult(removeData(argv[i]));
     }
     // 结束计时
     const auto end = std::chrono::high_resolution_clock::now();
